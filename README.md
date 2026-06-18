@@ -281,17 +281,6 @@ For list endpoints, `data` will be an array:
 }
 ```
 
-## Git Workflow
-
-After making changes:
-
-```bash
-git status
-git add .
-git commit -m "Describe your change"
-git push
-```
-
 ## Notes
 
 * This backend is currently read-only for the main data endpoints.

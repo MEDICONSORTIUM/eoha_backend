@@ -15,8 +15,8 @@ public interface ZoneRepository extends JpaRepository<Zone, Integer> {
      */
     @Query("""
             SELECT z FROM Zone z
-            WHERE (:province IS NULL OR z.provinceName = :province)
-              AND (:municipality IS NULL OR z.municipalityName = :municipality)
+            WHERE (CAST(:province AS string) IS NULL OR z.provinceName = :province)
+              AND (CAST(:municipality AS string) IS NULL OR z.municipalityName = :municipality)
             """)
     Page<Zone> search(@Param("province") String province,
                       @Param("municipality") String municipality,

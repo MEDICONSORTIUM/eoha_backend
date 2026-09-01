@@ -18,8 +18,8 @@ public interface MalariaObservationRepository extends JpaRepository<MalariaObser
      */
     @Query("""
             SELECT o FROM MalariaObservation o
-            WHERE (:zoneId IS NULL OR o.zoneId = :zoneId)
-              AND (:date IS NULL OR o.dateRecorded = :date)
+            WHERE (CAST(:zoneId AS integer) IS NULL OR o.zoneId = :zoneId)
+              AND (CAST(:date AS date) IS NULL OR o.dateRecorded = :date)
             """)
     Page<MalariaObservation> search(@Param("zoneId") Integer zoneId,
                                     @Param("date") LocalDate date,

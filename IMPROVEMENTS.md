@@ -23,7 +23,7 @@ identified alongside it, and what happened to each on `feature/api-v1-and-dashbo
 
 **Was**: One endpoint per filter (`/province/{p}`, `/municipality/{m}`, `/zone/{id}`, `/date/{d}`, `/zone/{id}/date/{d}`), unversioned (`/api/zones`, `/api/malaria-observations`).
 
-**Now**: `controller/ZoneV1Controller.java` and `controller/MalariaObservationV1Controller.java` expose one `GET` per resource under `/api/v1/`, with all filters as optional query parameters (`?province=&municipality=`, `?zoneId=&date=`) plus pagination (`?page=&size=`, default size 20). Each repository has a single null-guarded `@Query` (`WHERE (:x IS NULL OR field = :x) AND ...`) backing it, replacing the per-criterion derived finders.
+**Now**: `controller/ZoneV1Controller.java` and `controller/MalariaObservationV1Controller.java` expose one `GET` per resource under `/api/v1/`, with all filters as optional query parameters (`?province=&municipality=`, `?zoneId=&date=`) plus pagination (`?page=&size=`, default size 20). Each repository has a single null-guarded `@Query` (`WHERE (CAST(:x AS <type>) IS NULL OR field = :x) AND ...`) backing it, replacing the per-criterion derived finders. The explicit `CAST` is required on PostgreSQL — without it a parameter that only appears in an `IS NULL` test (notably the `date` filter) fails at execution with `could not determine data type of parameter`.
 
 The pre-versioning routes (`ZoneController`, `MalariaObservationController`) are kept as **deprecated aliases** — annotated `@Deprecated`, delegating to the same service methods with `Pageable.unpaged()`, returning the same unwrapped list shape as before so existing consumers aren't broken. They're slated for removal in a future major version.
 
@@ -31,7 +31,7 @@ The pre-versioning routes (`ZoneController`, `MalariaObservationController`) are
 
 **Was**: No indexes on filtered columns; `ddl-auto=none` + no migration tool meant `@Index` entity annotations would have been inert.
 
-**Now**: Flyway (`flyway-core` + `flyway-database-postgresql`) manages schema migrations. `src/main/resources/db/migration/V1__add_search_indexes.sql` adds:
+**Now**: Flyway manages schema migrations, wired in via `org.springframework.boot:spring-boot-flyway` (Spring Boot 4.x moved the per-technology auto-configurations out of `spring-boot-autoconfigure`, so `flyway-core` on its own is never invoked) plus `flyway-core` and `flyway-database-postgresql`. `src/main/resources/db/migration/V1__add_search_indexes.sql` adds:
 
 ```sql
 CREATE INDEX IF NOT EXISTS idx_zone_province_name ON zone (province_name);

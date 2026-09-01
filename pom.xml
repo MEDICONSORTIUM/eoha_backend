@@ -43,6 +43,13 @@
 			<artifactId>spring-boot-starter-webmvc</artifactId>
 		</dependency>
 
+		<!-- spring-boot-flyway carries FlywayAutoConfiguration; in Spring Boot 4.x the
+		     per-technology auto-configurations were split out of spring-boot-autoconfigure,
+		     so flyway-core alone is not enough to wire Flyway into startup. -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-flyway</artifactId>
+		</dependency>
 		<dependency>
 			<groupId>org.flywaydb</groupId>
 			<artifactId>flyway-core</artifactId>

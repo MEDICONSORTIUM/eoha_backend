@@ -140,63 +140,57 @@ If you cannot grant the app's DB user schema privileges, apply the same indexes 
 
 Browser-based frontends (React, Angular, etc.) on a different origin are allowed to call `GET` endpoints under `/api/**`. Allowed origins come from `eoha.cors.allowed-origins` (`application.properties`, comma-separated), overridable via the `CORS_ALLOWED_ORIGINS` environment variable. Default: `http://localhost:3000`.
 
-## Local Setup
+## Running the Backend
 
-### 1. Clone the repository
+Requires JDK 21. Use the bundled wrapper (`./mvnw`, or `.\mvnw.cmd` on Windows) — no separate Maven install needed. The app always needs a reachable PostgreSQL at startup (JPA detects the dialect, Flyway runs migrations); it will not boot without one.
+
+### Database connection
+
+The app resolves its datasource in this order:
+
+1. A `.env` file at the project root, if present — loaded via `spring.config.import`. It is a plain properties file and its keys win:
+
+   ```properties
+   spring.datasource.url=jdbc:postgresql://localhost:5432/postgres
+   spring.datasource.username=eoha
+   spring.datasource.password=your_password
+   ```
+
+   `.env` is git-ignored — keep real credentials only here, never in `application.properties`.
+
+2. Otherwise the `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` environment variables (how CI / deployments supply it):
+
+   ```bash
+   export DB_URL="jdbc:postgresql://your-rds-endpoint:5432/your_database?sslmode=require"
+   export DB_USERNAME="your_username"
+   export DB_PASSWORD="your_password"
+   ```
+
+### Start
 
 ```bash
 git clone https://github.com/MEDICONSORTIUM/eoha_backend.git
 cd eoha_backend
+./mvnw spring-boot:run
 ```
 
-### 2. Set database environment variables
+The API starts on `http://localhost:8080` (dashboard at `/`). On WSL, `localhost` is forwarded to Windows, so a Windows browser reaches it directly. Stop with `Ctrl+C`, or from another shell: `fuser -k 8080/tcp`.
 
-In PowerShell:
+On first connection to a given database Flyway baselines the existing schema and applies `V1__add_search_indexes.sql`; watch the startup log for a `Migrating schema "public" to version "1"` line.
 
-```powershell
-$env:DB_URL="jdbc:postgresql://your-rds-endpoint:5432/your_database?sslmode=require"
-$env:DB_USERNAME="your_username"
-$env:DB_PASSWORD="your_password"
+### Local PostgreSQL (no RDS access)
+
+To run fully offline against a throwaway local database:
+
+```bash
+sudo apt-get install -y postgresql
+sudo service postgresql start          # WSL: re-run after each restart
+sudo -u postgres psql <<'SQL'
+CREATE ROLE eoha LOGIN SUPERUSER PASSWORD 'choose_a_password';
+SQL
 ```
 
-Do not commit real database credentials to GitHub.
-
-### 3. Check `application.properties`
-
-The file should use environment variables:
-
-```properties
-spring.application.name=eoha_backend
-
-spring.datasource.url=${DB_URL}
-spring.datasource.username=${DB_USERNAME}
-spring.datasource.password=${DB_PASSWORD}
-
-spring.jpa.hibernate.ddl-auto=none
-spring.jpa.show-sql=true
-spring.jpa.properties.hibernate.format_sql=true
-
-spring.flyway.baseline-on-migrate=true
-spring.flyway.baseline-version=0
-
-server.port=8080
-```
-
-`spring.jpa.hibernate.ddl-auto=none` is used because the database tables already exist; Flyway (see above) is what manages schema changes such as indexes.
-
-### 4. Run the application
-
-On Windows PowerShell:
-
-```powershell
-.\mvnw.cmd spring-boot:run
-```
-
-The API should start on:
-
-```text
-http://localhost:8080
-```
+Point `.env` line 1 at `jdbc:postgresql://localhost:5432/postgres`, create the two tables to match the entities (`zone`, `malaria_observation` — columns as listed under [Database Tables](#database-tables)), then `./mvnw spring-boot:run`. Flyway adds the indexes on top.
 
 ## Status Dashboard
 

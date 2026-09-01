@@ -2,12 +2,15 @@
 
 Spring Boot REST API for the EOHA web application. The backend connects to an AWS RDS PostgreSQL database and exposes read endpoints for zone and malaria observation data.
 
+A live status dashboard is served at the API root — see [Status Dashboard](#status-dashboard).
+
 ## Tech Stack
 
 * Java 21
 * Spring Boot
 * Spring Web
 * Spring Data JPA
+* Flyway (schema migrations / indexes)
 * PostgreSQL
 * AWS RDS
 * Maven
@@ -15,14 +18,20 @@ Spring Boot REST API for the EOHA web application. The backend connects to an AW
 ## Project Structure
 
 ```text
-src/main/java/com/example/eoha_backend
+src/main/java/com/eoha/eoha_backend
 │
 ├── EohaBackendApplication.java
 │
+├── config
+│   └── WebConfig.java              # CORS
+│
 ├── controller
 │   ├── HealthController.java
-│   ├── ZoneController.java
-│   └── MalariaObservationController.java
+│   ├── InfoController.java         # dashboard metadata
+│   ├── ZoneController.java         # deprecated /api/zones/**
+│   ├── ZoneV1Controller.java       # /api/v1/zones
+│   ├── MalariaObservationController.java      # deprecated /api/malaria-observations/**
+│   └── MalariaObservationV1Controller.java    # /api/v1/malaria-observations
 │
 ├── service
 │   ├── ZoneService.java
@@ -36,8 +45,25 @@ src/main/java/com/example/eoha_backend
 │   ├── Zone.java
 │   └── MalariaObservation.java
 │
-└── dto
-    └── ApiResponse.java
+├── dto
+│   ├── ApiResponse.java
+│   ├── PagedResponse.java
+│   ├── InfoResponse.java
+│   ├── ZoneResponse.java
+│   └── MalariaObservationResponse.java
+│
+└── exception
+    ├── GlobalExceptionHandler.java
+    └── ResourceNotFoundException.java
+
+src/main/resources
+├── application.properties
+├── db/migration/                   # Flyway SQL
+│   └── V1__add_search_indexes.sql
+└── static/                         # status dashboard (served at /)
+    ├── index.html
+    ├── styles.css
+    └── app.js
 ```
 
 ## Architecture
@@ -52,7 +78,7 @@ Spring Data JPA
 AWS RDS PostgreSQL
 ```
 
-The frontend does not connect directly to the database. All database access is handled through the Spring Boot API.
+The frontend does not connect directly to the database. All database access is handled through the Spring Boot API. Controllers never return JPA entities — every response is mapped to a dedicated DTO (`ZoneResponse`, `MalariaObservationResponse`), so schema changes don't automatically change the API contract.
 
 ## Database Tables
 
@@ -100,6 +126,20 @@ agric_percentage
 
 The `malaria_observation.zone_id` field references `zone.zone_id`.
 
+## Database Migrations (Flyway)
+
+Schema changes (currently: indexes) are managed by [Flyway](https://flywaydb.org/), scripts live in `src/main/resources/db/migration/`. Hibernate itself never touches the schema (`spring.jpa.hibernate.ddl-auto=none`) — the tables already exist in RDS.
+
+On first run against an existing database, Flyway **baselines** the current schema (`spring.flyway.baseline-on-migrate=true`) and then applies any migration newer than the baseline. The database user needs `CREATE` privilege to add indexes.
+
+`V1__add_search_indexes.sql` adds indexes on the columns the API filters on: `zone.province_name`, `zone.municipality_name`, `malaria_observation.zone_id`, `malaria_observation.date_recorded`, and the composite `(zone_id, date_recorded)`.
+
+If you cannot grant the app's DB user schema privileges, apply the same indexes manually — see [IMPROVEMENTS.md](IMPROVEMENTS.md) for the raw SQL.
+
+## CORS
+
+Browser-based frontends (React, Angular, etc.) on a different origin are allowed to call `GET` endpoints under `/api/**`. Allowed origins come from `eoha.cors.allowed-origins` (`application.properties`, comma-separated), overridable via the `CORS_ALLOWED_ORIGINS` environment variable. Default: `http://localhost:3000`.
+
 ## Local Setup
 
 ### 1. Clone the repository
@@ -136,10 +176,13 @@ spring.jpa.hibernate.ddl-auto=none
 spring.jpa.show-sql=true
 spring.jpa.properties.hibernate.format_sql=true
 
+spring.flyway.baseline-on-migrate=true
+spring.flyway.baseline-version=0
+
 server.port=8080
 ```
 
-`spring.jpa.hibernate.ddl-auto=none` is used because the database tables already exist.
+`spring.jpa.hibernate.ddl-auto=none` is used because the database tables already exist; Flyway (see above) is what manages schema changes such as indexes.
 
 ### 4. Run the application
 
@@ -155,6 +198,10 @@ The API should start on:
 http://localhost:8080
 ```
 
+## Status Dashboard
+
+Visit `http://localhost:8080/` for a live status page: service health, build/version info, CORS configuration, uptime, and a clickable reference of every endpoint (current and deprecated). It's backed by `GET /api/health` and `GET /api/info`.
+
 ## API Endpoints
 
 Base URL for local development:
@@ -163,61 +210,78 @@ Base URL for local development:
 http://localhost:8080
 ```
 
+## API Versioning
+
+Resource endpoints are versioned under `/api/v1/`. The pre-versioning path-variable routes (`/api/zones/province/{name}`, `/api/malaria-observations/zone/{id}`, etc.) are kept as **deprecated aliases** for backward compatibility and will be removed in a future major version — new integrations should use `/api/v1/...`.
+
 ## Health Endpoints
 
 | Method | Route         | Description                      |
 | ------ | ------------- | -------------------------------- |
-| GET    | `/`           | Checks if the backend is running |
+| GET    | `/`           | Status dashboard (HTML)          |
 | GET    | `/api/health` | Basic health check endpoint      |
+| GET    | `/api/info`   | Build/version metadata, CORS config |
 
 ### Example Requests
 
 ```text
-GET http://localhost:8080/
 GET http://localhost:8080/api/health
+GET http://localhost:8080/api/info
 ```
 
-## Zone Endpoints
+## Zone Endpoints (`/api/v1`)
 
-| Method | Route                                        | Description                    |
-| ------ | -------------------------------------------- | ------------------------------ |
-| GET    | `/api/zones`                                 | Get all zones                  |
-| GET    | `/api/zones/{id}`                            | Get a single zone by `zone_id` |
-| GET    | `/api/zones/province/{provinceName}`         | Get zones by province name     |
-| GET    | `/api/zones/municipality/{municipalityName}` | Get zones by municipality name |
+| Method | Route                  | Description                                                        |
+| ------ | ---------------------- | ------------------------------------------------------------------ |
+| GET    | `/api/v1/zones`        | List zones. Optional `?province=`, `?municipality=`, `?page=`, `?size=` |
+| GET    | `/api/v1/zones/{id}`   | Get a single zone by `zone_id`                                     |
 
 ### Example Requests
 
 ```text
-GET http://localhost:8080/api/zones
-GET http://localhost:8080/api/zones/59500024
-GET http://localhost:8080/api/zones/province/KwaZulu-Natal
-GET http://localhost:8080/api/zones/municipality/Ethekwini%20Metropolitan%20Municipality
+GET http://localhost:8080/api/v1/zones
+GET http://localhost:8080/api/v1/zones?province=KwaZulu-Natal
+GET http://localhost:8080/api/v1/zones?province=KwaZulu-Natal&municipality=Ethekwini%20Metropolitan%20Municipality
+GET http://localhost:8080/api/v1/zones?page=0&size=20
+GET http://localhost:8080/api/v1/zones/59500024
 ```
 
-## Malaria Observation Endpoints
+## Malaria Observation Endpoints (`/api/v1`)
 
-| Method | Route                                                         | Description                                                     |
-| ------ | ------------------------------------------------------------- | --------------------------------------------------------------- |
-| GET    | `/api/malaria-observations`                                   | Get all malaria environmental observations                      |
-| GET    | `/api/malaria-observations/{id}`                              | Get one malaria observation by `env_record_id`                  |
-| GET    | `/api/malaria-observations/zone/{zoneId}`                     | Get malaria observations for a specific zone                    |
-| GET    | `/api/malaria-observations/date/{dateRecorded}`               | Get malaria observations for a specific date                    |
-| GET    | `/api/malaria-observations/zone/{zoneId}/date/{dateRecorded}` | Get malaria observations for a specific zone on a specific date |
+| Method | Route                                | Description                                                     |
+| ------ | ------------------------------------ | ----------------------------------------------------------------|
+| GET    | `/api/v1/malaria-observations`       | List observations. Optional `?zoneId=`, `?date=`, `?page=`, `?size=` |
+| GET    | `/api/v1/malaria-observations/{id}`  | Get one observation by `env_record_id`                          |
 
 ### Example Requests
 
 ```text
-GET http://localhost:8080/api/malaria-observations
-GET http://localhost:8080/api/malaria-observations/8054
-GET http://localhost:8080/api/malaria-observations/zone/41603005
-GET http://localhost:8080/api/malaria-observations/date/2026-03-01
-GET http://localhost:8080/api/malaria-observations/zone/41603005/date/2026-03-01
+GET http://localhost:8080/api/v1/malaria-observations
+GET http://localhost:8080/api/v1/malaria-observations?zoneId=41603005
+GET http://localhost:8080/api/v1/malaria-observations?date=2026-03-01
+GET http://localhost:8080/api/v1/malaria-observations?zoneId=41603005&date=2026-03-01
+GET http://localhost:8080/api/v1/malaria-observations/8054
 ```
+
+## Deprecated Endpoints
+
+Retained for backward compatibility; prefer the `/api/v1` routes above.
+
+| Method | Route                                                         |
+| ------ | -------------------------------------------------------------- |
+| GET    | `/api/zones`                                                    |
+| GET    | `/api/zones/{id}`                                               |
+| GET    | `/api/zones/province/{provinceName}`                            |
+| GET    | `/api/zones/municipality/{municipalityName}`                    |
+| GET    | `/api/malaria-observations`                                     |
+| GET    | `/api/malaria-observations/{id}`                                |
+| GET    | `/api/malaria-observations/zone/{zoneId}`                       |
+| GET    | `/api/malaria-observations/date/{dateRecorded}`                 |
+| GET    | `/api/malaria-observations/zone/{zoneId}/date/{dateRecorded}`   |
 
 ## Response Format
 
-Most API responses follow this structure:
+Every endpoint responds with the same envelope:
 
 ```json
 {
@@ -227,15 +291,37 @@ Most API responses follow this structure:
 }
 ```
 
-For list endpoints, `data` will be an array:
+For list endpoints without pagination (the deprecated routes), `data` is an array. For the `/api/v1` list endpoints, `data` is a page:
 
 ```json
 {
   "success": true,
-  "data": [],
+  "data": {
+    "content": [ /* ZoneResponse[] or MalariaObservationResponse[] */ ],
+    "page": 0,
+    "size": 20,
+    "totalElements": 134,
+    "totalPages": 7,
+    "first": true,
+    "last": false
+  },
   "message": null
 }
 ```
+
+## Error Behavior
+
+A request for an entity that doesn't exist returns HTTP 404 with `success: false`:
+
+```json
+{
+  "success": false,
+  "data": null,
+  "message": "Zone 999999 not found"
+}
+```
+
+An invalid parameter (e.g. a non-numeric `id`) returns HTTP 400. Any other unexpected server error returns HTTP 500 with a generic message — details are logged server-side, not exposed to the client.
 
 ## Example Zone Response
 
@@ -285,5 +371,6 @@ For list endpoints, `data` will be an array:
 
 * This backend is currently read-only for the main data endpoints.
 * Database credentials must be stored using environment variables.
-* The API uses existing PostgreSQL tables and does not create or update the database schema automatically.
+* The API uses existing PostgreSQL tables; Flyway only manages incremental schema additions (e.g. indexes), not table creation.
 * The frontend should call the Spring Boot API, not the AWS RDS database directly.
+* There is currently no automated test suite (see [IMPROVEMENTS.md](IMPROVEMENTS.md) for the plan to reintroduce one).

@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en" data-status="checking">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>EOHA Backend</title>
+    <meta name="description" content="Status and API reference for the EOHA (Environmental &amp; Observational Health Analytics) backend.">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%238B5CF6'/%3E%3Cpath d='M16 7l2.4 6.6L25 16l-6.6 2.4L16 25l-2.4-6.6L7 16l6.6-2.4z' fill='%230B0B0E'/%3E%3C/svg%3E">
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<main class="stack">
+    <header class="head">
+        <div class="head__id">
+            <span class="mark" aria-hidden="true">
+                <svg viewBox="0 0 32 32" width="28" height="28">
+                    <rect width="32" height="32" rx="8" fill="#8B5CF6"></rect>
+                    <path d="M16 7l2.4 6.6L25 16l-6.6 2.4L16 25l-2.4-6.6L7 16l6.6-2.4z" fill="#0B0B0E"></path>
+                </svg>
+            </span>
+            <div>
+                <h1>EOHA Backend</h1>
+                <p class="head__sub">Environmental &amp; Observational Health Analytics API</p>
+            </div>
+        </div>
+        <span class="pill" id="status-pill" role="status">
+            <span class="pill__dot"></span>
+            <span class="pill__label" id="status-label">Checking&hellip;</span>
+        </span>
+    </header>
+
+    <p class="meta" id="meta">
+        <span data-slot="version">&mdash;</span>
+        <span class="meta__sep">&middot;</span>
+        <span data-slot="api">API v1</span>
+        <span class="meta__sep">&middot;</span>
+        <span data-slot="port">:8080</span>
+        <span class="meta__sep">&middot;</span>
+        <span data-slot="uptime">uptime &mdash;</span>
+    </p>
+
+    <section class="section">
+        <p class="eyebrow">Resources</p>
+        <div class="cards">
+            <article class="card">
+                <h2 class="card__title">REST API</h2>
+                <p class="card__value">Spring Boot 4.1 &middot; Java 21</p>
+                <p class="card__sub">Layered REST over Spring Data JPA</p>
+            </article>
+            <article class="card">
+                <h2 class="card__title">PostgreSQL</h2>
+                <p class="card__value">AWS RDS</p>
+                <p class="card__sub">Schema managed by Flyway &middot; V1</p>
+            </article>
+            <article class="card">
+                <h2 class="card__title">CORS</h2>
+                <p class="card__value" id="cors-value">&mdash;</p>
+                <p class="card__sub">GET only, on <code>/api/**</code></p>
+            </article>
+            <article class="card">
+                <h2 class="card__title">Runtime</h2>
+                <p class="card__value" id="started-value">&mdash;</p>
+                <p class="card__sub" id="uptime-sub">Waiting for first response</p>
+            </article>
+        </div>
+    </section>
+
+    <section class="section">
+        <p class="eyebrow">Endpoints</p>
+        <nav class="routes" id="routes" aria-label="API endpoints">
+            <a class="route" href="/api/health" target="_blank" rel="noopener">
+                <span class="route__method">GET</span>
+                <span class="route__path">/api/health</span>
+                <span class="route__hint">liveness</span>
+            </a>
+            <a class="route" href="/api/info" target="_blank" rel="noopener">
+                <span class="route__method">GET</span>
+                <span class="route__path">/api/info</span>
+                <span class="route__hint">build metadata</span>
+            </a>
+            <a class="route" href="/api/v1/zones" target="_blank" rel="noopener">
+                <span class="route__method">GET</span>
+                <span class="route__path">/api/v1/zones</span>
+                <span class="route__hint">?province &amp; ?municipality &amp; page</span>
+            </a>
+            <a class="route" href="/api/v1/zones/1" target="_blank" rel="noopener">
+                <span class="route__method">GET</span>
+                <span class="route__path">/api/v1/zones/{id}</span>
+                <span class="route__hint">one zone</span>
+            </a>
+            <a class="route" href="/api/v1/malaria-observations" target="_blank" rel="noopener">
+                <span class="route__method">GET</span>
+                <span class="route__path">/api/v1/malaria-observations</span>
+                <span class="route__hint">?zoneId &amp; ?date &amp; page</span>
+            </a>
+            <a class="route" href="/api/v1/malaria-observations/1" target="_blank" rel="noopener">
+                <span class="route__method">GET</span>
+                <span class="route__path">/api/v1/malaria-observations/{id}</span>
+                <span class="route__hint">one observation</span>
+            </a>
+        </nav>
+
+        <p class="eyebrow eyebrow--muted">Deprecated &mdash; use <code>/api/v1</code></p>
+        <nav class="routes routes--muted" aria-label="Deprecated endpoints">
+            <a class="route" href="/api/zones/province/KwaZulu-Natal" target="_blank" rel="noopener">
+                <span class="route__method">GET</span>
+                <span class="route__path">/api/zones/province/{name}</span>
+                <span class="route__hint">&rarr; ?province</span>
+            </a>
+            <a class="route" href="/api/zones/municipality/Ethekwini" target="_blank" rel="noopener">
+                <span class="route__method">GET</span>
+                <span class="route__path">/api/zones/municipality/{name}</span>
+                <span class="route__hint">&rarr; ?municipality</span>
+            </a>
+            <a class="route" href="/api/malaria-observations/zone/1" target="_blank" rel="noopener">
+                <span class="route__method">GET</span>
+                <span class="route__path">/api/malaria-observations/zone/{zoneId}</span>
+                <span class="route__hint">&rarr; ?zoneId</span>
+            </a>
+            <a class="route" href="/api/malaria-observations/date/2026-03-01" target="_blank" rel="noopener">
+                <span class="route__method">GET</span>
+                <span class="route__path">/api/malaria-observations/date/{date}</span>
+                <span class="route__hint">&rarr; ?date</span>
+            </a>
+        </nav>
+    </section>
+
+    <footer class="foot">
+        <span>EOHA &middot; MEDIC Consortium</span>
+        <a href="https://github.com/MEDICONSORTIUM/eoha_backend" target="_blank" rel="noopener">Repository</a>
+    </footer>
+</main>
+<script src="/app.js"></script>
+</body>
+</html>

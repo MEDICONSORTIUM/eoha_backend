@@ -4,16 +4,18 @@ This document defines the AI Agents that can interact with the EOHA (Environment
 
 **API Base URL**: `http://localhost:8080`
 
+**API Versioning**: Resource endpoints live under `/api/v1/` (e.g. `/api/v1/zones`, `/api/v1/malaria-observations`), each supporting optional filter query parameters and pagination (`?page=&size=`). The earlier path-variable routes (`/api/zones/province/{name}`, `/api/malaria-observations/zone/{id}`, etc.) still work as deprecated aliases but should not be used for new integrations.
+
 **Response Envelope**: All REST endpoints return a consistent `ApiResponse<T>` wrapper:
 ```json
 {
   "success": true,
-  "data": <object or array>,
+  "data": <object, array, or a paged envelope for /api/v1 list endpoints>,
   "message": null
 }
 ```
 
-**Error Behavior**: When an entity is not found the service throws a `RuntimeException`, which results in an HTTP 500 response:
+**Error Behavior**: When an entity is not found the service throws a `ResourceNotFoundException`, which results in an HTTP 404 response. Any other unexpected error results in HTTP 500:
 ```json
 {
   "success": false,

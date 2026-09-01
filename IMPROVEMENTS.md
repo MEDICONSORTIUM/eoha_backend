@@ -60,7 +60,7 @@ SLF4J logging added to `GlobalExceptionHandler` (WARN/ERROR) and to the not-foun
 
 ### CORS
 
-`config/WebConfig.java` (`WebMvcConfigurer`, not `@EnableWebMvc` — that would have disabled static-resource serving) allows `GET` on `/api/**` from origins in `eoha.cors.allowed-origins`, defaulting to `http://localhost:3000` and overridable via the `CORS_ALLOWED_ORIGINS` environment variable.
+`config/WebConfig.java` (`WebMvcConfigurer`, not `@EnableWebMvc` — that would have disabled static-resource serving) allows `GET`/`HEAD` on `/api/**` from `eoha.cors.allowed-origins`, overridable via the `CORS_ALLOWED_ORIGINS` environment variable. It uses `allowedOriginPatterns`, so the default `http://localhost:[*]`, `http://127.0.0.1:[*]` lets any local dev server port (Live Server, Vite, CRA, `python -m http.server`) reach the API with no extra config; preflight is cached for an hour and non-local origins get `403`. Production sets the real site origin(s) via the env var.
 
 ### Status dashboard
 

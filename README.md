@@ -138,7 +138,21 @@ If you cannot grant the app's DB user schema privileges, apply the same indexes 
 
 ## CORS
 
-Browser-based frontends (React, Angular, etc.) on a different origin are allowed to call `GET` endpoints under `/api/**`. Allowed origins come from `eoha.cors.allowed-origins` (`application.properties`, comma-separated), overridable via the `CORS_ALLOWED_ORIGINS` environment variable. Default: `http://localhost:3000`.
+Browser UIs on another origin can call `GET`/`HEAD` endpoints under `/api/**`. Allowed origins are **patterns** from `eoha.cors.allowed-origins` (`application.properties`, comma-separated), overridable via the `CORS_ALLOWED_ORIGINS` environment variable.
+
+Default: `http://localhost:[*]`, `http://127.0.0.1:[*]` — the `[*]` matches any port, so Live Server (`:5500`), Vite (`:5173`), CRA (`:3000`), `python -m http.server`, etc. all work with no extra config. Preflight (`OPTIONS`) is handled automatically and cached for an hour. Non-local origins are rejected with `403`.
+
+For production set `CORS_ALLOWED_ORIGINS` to the real site origin(s), e.g. `https://main.d1jko0jkg4m7f.amplifyapp.com`.
+
+Calling from a UI:
+
+```js
+const API = "http://localhost:8080";
+const res = await fetch(`${API}/api/v1/zones?province=KwaZulu-Natal&size=20`);
+const { data } = await res.json();      // { content: [...], page, size, totalElements, totalPages, first, last }
+```
+
+A page opened as a `file://` URL sends `Origin: null` and will be blocked — serve the UI over http (`python -m http.server 5500` from the UI project, or VS Code Live Server).
 
 ## Running the Backend
 

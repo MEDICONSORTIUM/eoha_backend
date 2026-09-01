@@ -1,14 +1,10 @@
 package com.eoha.eoha_backend.dto;
 
-import org.springframework.data.domain.Page;
-
 import java.util.List;
-import java.util.function.Function;
 
 /**
- * Stable pagination envelope. Returned instead of Spring Data's {@code Page} /
- * {@code PageImpl}, whose JSON serialization is not part of the framework's public
- * contract and changes between versions.
+ * Pagination envelope for list endpoints. Slices an in-memory list — there is no
+ * database behind this placeholder API.
  */
 public record PagedResponse<T>(
         List<T> content,
@@ -20,16 +16,23 @@ public record PagedResponse<T>(
         boolean last
 ) {
 
-    /** Wrap a {@link Page} of entities, mapping each element to a DTO. */
-    public static <E, T> PagedResponse<T> of(Page<E> page, Function<E, T> mapper) {
+    public static <T> PagedResponse<T> of(List<T> all, int page, int size) {
+        if (page < 0) page = 0;
+        if (size < 1) size = 20;
+
+        int total = all.size();
+        int totalPages = (int) Math.ceil(total / (double) size);
+        int from = Math.min(page * size, total);
+        int to = Math.min(from + size, total);
+
         return new PagedResponse<>(
-                page.map(mapper).getContent(),
-                page.getNumber(),
-                page.getSize(),
-                page.getTotalElements(),
-                page.getTotalPages(),
-                page.isFirst(),
-                page.isLast()
+                all.subList(from, to),
+                page,
+                size,
+                total,
+                totalPages,
+                page == 0,
+                page >= totalPages - 1
         );
     }
 }

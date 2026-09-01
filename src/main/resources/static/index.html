@@ -45,17 +45,17 @@
             <article class="card">
                 <h2 class="card__title">REST API</h2>
                 <p class="card__value">Spring Boot 4.1 &middot; Java 21</p>
-                <p class="card__sub">Layered REST over Spring Data JPA</p>
+                <p class="card__sub">Web layer only &mdash; no database</p>
             </article>
             <article class="card">
-                <h2 class="card__title">PostgreSQL</h2>
-                <p class="card__value">AWS RDS</p>
-                <p class="card__sub">Schema managed by Flyway &middot; V1</p>
+                <h2 class="card__title">Data</h2>
+                <p class="card__value">Placeholder</p>
+                <p class="card__sub">Canned sample responses, in memory</p>
             </article>
             <article class="card">
                 <h2 class="card__title">CORS</h2>
                 <p class="card__value" id="cors-value">&mdash;</p>
-                <p class="card__sub">GET only, on <code>/api/**</code></p>
+                <p class="card__sub">GET / HEAD, on <code>/api/**</code></p>
             </article>
             <article class="card">
                 <h2 class="card__title">Runtime</h2>
@@ -97,30 +97,6 @@
                 <span class="route__method">GET</span>
                 <span class="route__path">/api/v1/malaria-observations/{id}</span>
                 <span class="route__hint">one observation</span>
-            </a>
-        </nav>
-
-        <p class="eyebrow eyebrow--muted">Deprecated &mdash; use <code>/api/v1</code></p>
-        <nav class="routes routes--muted" aria-label="Deprecated endpoints">
-            <a class="route" href="/api/zones/province/KwaZulu-Natal" target="_blank" rel="noopener">
-                <span class="route__method">GET</span>
-                <span class="route__path">/api/zones/province/{name}</span>
-                <span class="route__hint">&rarr; ?province</span>
-            </a>
-            <a class="route" href="/api/zones/municipality/Ethekwini" target="_blank" rel="noopener">
-                <span class="route__method">GET</span>
-                <span class="route__path">/api/zones/municipality/{name}</span>
-                <span class="route__hint">&rarr; ?municipality</span>
-            </a>
-            <a class="route" href="/api/malaria-observations/zone/1" target="_blank" rel="noopener">
-                <span class="route__method">GET</span>
-                <span class="route__path">/api/malaria-observations/zone/{zoneId}</span>
-                <span class="route__hint">&rarr; ?zoneId</span>
-            </a>
-            <a class="route" href="/api/malaria-observations/date/2026-03-01" target="_blank" rel="noopener">
-                <span class="route__method">GET</span>
-                <span class="route__path">/api/malaria-observations/date/{date}</span>
-                <span class="route__hint">&rarr; ?date</span>
             </a>
         </nav>
     </section>

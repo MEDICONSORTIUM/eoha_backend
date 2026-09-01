@@ -4,8 +4,6 @@ import com.eoha.eoha_backend.dto.ApiResponse;
 import com.eoha.eoha_backend.dto.PagedResponse;
 import com.eoha.eoha_backend.dto.ZoneResponse;
 import com.eoha.eoha_backend.service.ZoneService;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -24,17 +22,18 @@ public class ZoneV1Controller {
     }
 
     /**
-     * List zones with optional filtering and pagination.
-     * <p>Example: {@code GET /api/v1/zones?province=KwaZulu-Natal&municipality=Ethekwini&page=0&size=20}
+     * List zones. All filters optional.
+     * <p>{@code GET /api/v1/zones?province=KwaZulu-Natal&municipality=Ethekwini&page=0&size=20}
      */
     @GetMapping
     public ResponseEntity<ApiResponse<PagedResponse<ZoneResponse>>> getZones(
             @RequestParam(required = false) String province,
             @RequestParam(required = false) String municipality,
-            @PageableDefault(size = 20) Pageable pageable
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
     ) {
         return ResponseEntity.ok(ApiResponse.success(
-                zoneService.searchZones(province, municipality, pageable)));
+                zoneService.searchZones(province, municipality, page, size)));
     }
 
     @GetMapping("/{id}")

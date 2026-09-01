@@ -4,8 +4,6 @@ import com.eoha.eoha_backend.dto.ApiResponse;
 import com.eoha.eoha_backend.dto.MalariaObservationResponse;
 import com.eoha.eoha_backend.dto.PagedResponse;
 import com.eoha.eoha_backend.service.MalariaObservationService;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.web.PageableDefault;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -27,18 +25,19 @@ public class MalariaObservationV1Controller {
     }
 
     /**
-     * List malaria observations with optional filtering and pagination.
-     * <p>Example: {@code GET /api/v1/malaria-observations?zoneId=41603005&date=2026-03-01&page=0&size=20}
+     * List observations. All filters optional.
+     * <p>{@code GET /api/v1/malaria-observations?zoneId=1&date=2026-03-01&page=0&size=20}
      */
     @GetMapping
     public ResponseEntity<ApiResponse<PagedResponse<MalariaObservationResponse>>> getObservations(
             @RequestParam(required = false) Integer zoneId,
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
-            @PageableDefault(size = 20) Pageable pageable
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
     ) {
         return ResponseEntity.ok(ApiResponse.success(
-                malariaObservationService.searchObservations(zoneId, date, pageable)));
+                malariaObservationService.searchObservations(zoneId, date, page, size)));
     }
 
     @GetMapping("/{id}")

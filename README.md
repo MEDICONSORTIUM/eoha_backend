@@ -1,128 +1,83 @@
 # EOHA Backend
 
-Placeholder REST API for the EOHA frontend. It returns **canned sample data** in the
-final response shape so the UI can be built against it. No database — swap the hardcoded
-lists in the service classes for a real data source when one is available.
+Express 5 REST API for the EOHA frontend. It serves canned sample data in memory;
+there is no database or live malaria prediction model.
 
-## Run it
+## Run
 
-Requires JDK 21. Nothing else — no database, no environment variables.
+Requires Node.js 22 or newer and npm. Java and Maven are no longer required.
 
 ```bash
-git clone https://github.com/MEDICONSORTIUM/eoha_backend.git
-cd eoha_backend
-./mvnw spring-boot:run          # .\mvnw.cmd spring-boot:run on Windows
+npm ci
+cp .env.example .env       # optional local overrides
+npm start
 ```
 
-Starts on `http://localhost:8080`. A status page with the endpoint list is at `/`.
-Stop with `Ctrl+C`.
+Open http://localhost:8080 for the status dashboard. `npm run dev` enables file
+watching. `npm test` runs the API contract tests. With nvm, use `nvm use` first.
+The start/dev commands load `.env` if present; existing environment variables take
+precedence. Never commit local `.env` files.
 
-## Endpoints
+## Configuration
 
-Every response is wrapped in the same envelope:
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| PORT | 8080 | Integer TCP port, 1–65535 |
+| EOHA_NAME | EOHA Backend | Display name |
+| EOHA_VERSION | 0.0.1-SNAPSHOT | Version metadata |
+| CORS_ALLOWED_ORIGINS | http://localhost:[*],http://127.0.0.1:[*] | Comma-separated allowed origin patterns |
 
-```json
-{ "success": true, "data": <object | paged list>, "message": null }
-```
+For deployment, set CORS_ALLOWED_ORIGINS to your frontend origin, install with
+`npm ci --omit=dev`, and run `npm start` under your platform's process manager.
+The server handles SIGINT/SIGTERM and drains connections with a 10-second limit.
 
-| Method | Route | Notes |
-| ------ | ----- | ----- |
-| GET | `/api/health` | `"OK"` |
-| GET | `/api/info` | name, version, uptime, CORS config |
-| GET | `/api/v1/zones` | optional `?province=`, `?municipality=`, `?page=` (0), `?size=` (20) |
-| GET | `/api/v1/zones/{id}` | one zone; unknown id → `404` |
-| GET | `/api/v1/malaria-observations` | optional `?zoneId=`, `?date=` (ISO), `?page=`, `?size=` |
-| GET | `/api/v1/malaria-observations/{id}` | one observation; unknown id → `404` |
+## API contract
 
-### List response (`/api/v1/zones`)
+`GET /api/health` returns plain text `OK`, matching the original Spring probe.
+All JSON endpoints use `{ "success": true, "data": ..., "message": null }`.
+Failures use `{ "success": false, "data": null, "message": "..." }`.
 
-```json
-{
-  "success": true,
-  "data": {
-    "content": [
-      {
-        "zoneId": 1,
-        "parentZoneId": null,
-        "zoneName": "ETH_24",
-        "boundaryPolygon": null,
-        "basePopulation": 12,
-        "dominantHabitatCode": "10.0",
-        "externalZoneId": "59500024",
-        "zoneType": null,
-        "latitude": -29.85264,
-        "longitude": 30.924128,
-        "populationDensityPerKm2": 1279.1251,
-        "municipalityName": "Ethekwini Metropolitan Municipality",
-        "provinceName": "KwaZulu-Natal"
-      }
-    ],
-    "page": 0,
-    "size": 20,
-    "totalElements": 1,
-    "totalPages": 1,
-    "first": true,
-    "last": true
-  },
-  "message": null
-}
-```
+| Method | Route | Parameters / behavior |
+| --- | --- | --- |
+| GET | /api/info | name, version, apiVersion, startedAt, corsAllowedOrigins |
+| GET | /api/v1/zones | province, municipality, page, size |
+| GET | /api/v1/zones/:id | Single zone; unknown ID returns 404 |
+| GET | /api/v1/malaria-observations | zoneId, date, page, size |
+| GET | /api/v1/malaria-observations/:id | Single observation; unknown ID returns 404 |
 
-### Single observation (`/api/v1/malaria-observations/{id}`)
+Zone filters are exact, case-insensitive matches. Date filters use valid
+YYYY-MM-DD calendar dates. List data has content, page, size, totalElements,
+totalPages, first, and last. Defaults are page=0 and size=20; empty page/size
+values also use these defaults. Negative pages become 0; sizes below 1 become 20.
+An out-of-range page returns empty content. Invalid integers/dates return 400.
+Integers are restricted to signed 32-bit values, matching Java's binding.
+Unknown API routes return an enveloped 404.
 
-```json
-{
-  "success": true,
-  "data": {
-    "envRecordId": 1,
-    "zoneId": 1,
-    "dateRecorded": "2026-03-01",
-    "lstSurfaceTempC": 21.83502,
-    "soilMoisturePct": 0.3396694,
-    "ndviVegetationIndex": 0.5959259,
-    "ndwiWaterIndex": -0.38863385,
-    "airTempC": 17.569027,
-    "agricPercentage": 0.021417777
-  },
-  "message": null
-}
-```
+Zone records retain zoneId, parentZoneId, zoneName, boundaryPolygon,
+basePopulation, dominantHabitatCode, externalZoneId, zoneType, latitude,
+longitude, populationDensityPerKm2, municipalityName, and provinceName.
+Observation records retain envRecordId, zoneId, dateRecorded, lstSurfaceTempC,
+soilMoisturePct, ndviVegetationIndex, ndwiWaterIndex, airTempC, and agricPercentage.
 
-### Errors
-
-```json
-{ "success": false, "data": null, "message": "Zone 999 not found" }   // 404 unknown id
-{ "success": false, "data": null, "message": "Invalid value for parameter 'id'" }   // 400 bad param
-```
-
-## Calling it from a UI
-
-CORS allows `GET`/`HEAD` on `/api/**` from any `localhost` / `127.0.0.1` port, so any
-local dev server works with no config:
+CORS supports GET/HEAD/OPTIONS under /api, reflects requested preflight headers,
+and permits localhost/127.0.0.1 development ports by default. Serve the frontend
+using HTTP rather than file://.
 
 ```js
-const API = "http://localhost:8080";
-const { data } = await (await fetch(`${API}/api/v1/zones?province=KwaZulu-Natal`)).json();
+const response = await fetch('http://localhost:8080/api/v1/zones?province=Limpopo');
+const { data } = await response.json();
 ```
-
-Serve the UI over http (e.g. `python -m http.server 5500`), not as a `file://` page.
-For production set `CORS_ALLOWED_ORIGINS` to the real site origin(s).
 
 ## Structure
 
-```text
-src/main/java/com/eoha/eoha_backend
-├── controller   HealthController, InfoController, ZoneV1Controller, MalariaObservationV1Controller
-├── service      ZoneService, MalariaObservationService   ← hardcoded sample data lives here
-├── dto          ApiResponse, PagedResponse, ZoneResponse, MalariaObservationResponse, InfoResponse
-├── exception    GlobalExceptionHandler, ResourceNotFoundException
-└── config       WebConfig (CORS)
+- src/server.js: process startup and shutdown
+- src/app.js: application assembly, static dashboard and error handling
+- src/routes/: HTTP endpoints
+- src/services/: sample data and filtering
+- src/lib/: response envelopes, validation, pagination and errors
+- src/config.js and src/cors.js: configuration and browser access
+- public/: status dashboard
+- test/: API regression tests
 
-src/main/resources/static   status dashboard served at /
-```
-
-## Making it real
-
-Replace the `List.of(...)` placeholder data in `ZoneService` / `MalariaObservationService`
-with calls to whatever the data source ends up being (JPA repository, HTTP client, etc.).
-The controllers, DTOs, and error handling stay as they are.
+See MIGRATION.md for the Spring-to-Express mapping and compatibility decisions.
+When a data source is chosen, replace service internals while retaining the API.

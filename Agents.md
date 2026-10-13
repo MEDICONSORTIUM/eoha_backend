@@ -8,7 +8,9 @@ This document defines the AI Agents that can interact with the EOHA (Environment
 
 **Note**: The backend currently serves canned placeholder data (no database) so responses are stable but not live.
 
-**Response Envelope**: All REST endpoints return a consistent `ApiResponse<T>` wrapper:
+**Runtime**: Node.js 22+ and Express 5. The health endpoint returns plain text `OK`.
+
+**Response Envelope**: All JSON endpoints return a consistent `ApiResponse<T>` wrapper:
 ```json
 {
   "success": true,
@@ -17,7 +19,7 @@ This document defines the AI Agents that can interact with the EOHA (Environment
 }
 ```
 
-**Error Behavior**: When an entity is not found the service throws a `ResourceNotFoundException`, which results in an HTTP 404 response. Any other unexpected error results in HTTP 500:
+**Error Behavior**: When an entity is not found the service throws a `ResourceNotFoundException` handled by Express error middleware, which results in an HTTP 404 response. Any other unexpected error results in HTTP 500:
 ```json
 {
   "success": false,
@@ -69,7 +71,7 @@ This document defines the AI Agents that can interact with the EOHA (Environment
 
 ## 4. Data Reliability / Infrastructure Agent
 **Role**: Health Monitor & Availability Watchdog
-**Description**: Monitors the API's availability and connectivity to the PostgreSQL database. Alerts on service degradation so that the other agents can pause data collection until the backend is healthy.
+**Description**: Monitors the API's availability. This placeholder implementation has no database. Alerts on service degradation so that the other agents can pause data collection until the backend is healthy.
 **Responsibilities**:
 - Poll the health endpoints on a configurable interval.
 - Report uptime status and alert when either endpoint returns a non-200 response.

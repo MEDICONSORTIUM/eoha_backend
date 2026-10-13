@@ -1,0 +1,20 @@
+{
+  "name": "eoha_backend",
+  "version": "0.0.1",
+  "description": "Placeholder REST API for the EOHA frontend — canned responses, no database.",
+  "type": "module",
+  "private": true,
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node --env-file-if-exists=.env src/server.js",
+    "dev": "node --env-file-if-exists=.env --watch src/server.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^5.1.0"
+  }
+}

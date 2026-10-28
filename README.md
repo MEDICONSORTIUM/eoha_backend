@@ -1,289 +1,124 @@
 # EOHA Backend
 
-Spring Boot REST API for the EOHA web application. The backend connects to an AWS RDS PostgreSQL database and exposes read endpoints for zone and malaria observation data.
+Spring Boot REST API for the Earth Observation Health Analytics platform.
 
-## Tech Stack
+This version targets the normalized PostgreSQL schema used by the current EOHA data pipeline. The previous `zone` and `malaria_observation` JPA mappings have been removed.
 
-* Java 21
-* Spring Boot
-* Spring Web
-* Spring Data JPA
-* PostgreSQL
-* AWS RDS
-* Maven
+## Stack
 
-## Project Structure
+- Java 21
+- Spring Boot 4.1.2
+- Spring Web MVC
+- Spring JDBC
+- PostgreSQL
+- AWS RDS
+- Maven
 
-```text
-src/main/java/com/example/eoha_backend
-│
-├── EohaBackendApplication.java
-│
-├── controller
-│   ├── HealthController.java
-│   ├── ZoneController.java
-│   └── MalariaObservationController.java
-│
-├── service
-│   ├── ZoneService.java
-│   └── MalariaObservationService.java
-│
-├── repository
-│   ├── ZoneRepository.java
-│   └── MalariaObservationRepository.java
-│
-├── model
-│   ├── Zone.java
-│   └── MalariaObservation.java
-│
-└── dto
-    └── ApiResponse.java
-```
+## Database schema
 
-## Architecture
+The API reads from schema `eoha` and exposes these tables:
 
-```text
-Frontend Web App
-      ↓
-Spring Boot REST API
-      ↓
-Spring Data JPA
-      ↓
-AWS RDS PostgreSQL
-```
+- `regions`
+- `environmental_observations`
+- `environmental_variables`
+- `data_sources`
+- `etl_runs`
 
-The frontend does not connect directly to the database. All database access is handled through the Spring Boot API.
+The API is read-only. SQL table names are not accepted from clients; only the fixed whitelist above is queryable.
 
-## Database Tables
+## Configuration
 
-The current backend works with the following PostgreSQL tables:
+Set the database connection through environment variables.
 
-### `zone`
-
-Stores geographic zone information.
-
-Important fields include:
-
-```text
-zone_id
-parent_zone_id
-zone_name
-boundary_polygon
-base_population
-dominant_habitat_code
-external_zone_id
-zone_type
-latitude
-longitude
-population_density_per_km2
-municipality_name
-province_name
-```
-
-### `malaria_observation`
-
-Stores environmental malaria observation data per zone and date.
-
-Important fields include:
-
-```text
-env_record_id
-zone_id
-date_recorded
-lst_surface_temp_c
-soil_moisture_pct
-ndvi_vegetation_index
-ndwi_water_index
-air_temp_c
-agric_percentage
-```
-
-The `malaria_observation.zone_id` field references `zone.zone_id`.
-
-## Local Setup
-
-### 1. Clone the repository
-
-```bash
-git clone https://github.com/MEDICONSORTIUM/eoha_backend.git
-cd eoha_backend
-```
-
-### 2. Set database environment variables
-
-In PowerShell:
+PowerShell:
 
 ```powershell
-$env:DB_URL="jdbc:postgresql://your-rds-endpoint:5432/your_database?sslmode=require"
-$env:DB_USERNAME="your_username"
-$env:DB_PASSWORD="your_password"
+$env:DB_URL="jdbc:postgresql://YOUR_RDS_ENDPOINT:5432/eoha?sslmode=require"
+$env:DB_USERNAME="YOUR_DB_USER"
+$env:DB_PASSWORD="YOUR_DB_PASSWORD"
 ```
 
-Do not commit real database credentials to GitHub.
+Optional:
 
-### 3. Check `application.properties`
-
-The file should use environment variables:
-
-```properties
-spring.application.name=eoha_backend
-
-spring.datasource.url=${DB_URL}
-spring.datasource.username=${DB_USERNAME}
-spring.datasource.password=${DB_PASSWORD}
-
-spring.jpa.hibernate.ddl-auto=none
-spring.jpa.show-sql=true
-spring.jpa.properties.hibernate.format_sql=true
-
-server.port=8080
+```powershell
+$env:DB_POOL_SIZE="10"
+$env:PORT="8080"
 ```
 
-`spring.jpa.hibernate.ddl-auto=none` is used because the database tables already exist.
+No database credentials should be committed to GitHub.
 
-### 4. Run the application
-
-On Windows PowerShell:
+## Run
 
 ```powershell
 .\mvnw.cmd spring-boot:run
 ```
 
-The API should start on:
+The service runs on `http://localhost:8080` by default.
+
+## Health endpoints
+
+| Method | Route | Purpose |
+|---|---|---|
+| GET | `/` | Confirms the HTTP service is running |
+| GET | `/api/health` | Application liveness |
+| GET | `/api/health/database` | Tests PostgreSQL connectivity and verifies all five required EOHA tables |
+
+`/api/health/database` returns HTTP `200` only when the database is reachable and all five required tables are present. It returns `503` otherwise.
+
+## Data endpoints
+
+All data endpoints support `limit` and `offset`.
+
+| Method | Route |
+|---|---|
+| GET | `/api/regions` |
+| GET | `/api/environmental-observations` |
+| GET | `/api/environmental-variables` |
+| GET | `/api/data-sources` |
+| GET | `/api/etl-runs` |
+| GET | `/api/schema` |
+
+Example:
 
 ```text
-http://localhost:8080
+GET http://localhost:8080/api/environmental-observations?limit=100&offset=0
 ```
 
-## API Endpoints
+The maximum page size is 500.
 
-Base URL for local development:
-
-```text
-http://localhost:8080
-```
-
-## Health Endpoints
-
-| Method | Route         | Description                      |
-| ------ | ------------- | -------------------------------- |
-| GET    | `/`           | Checks if the backend is running |
-| GET    | `/api/health` | Basic health check endpoint      |
-
-### Example Requests
-
-```text
-GET http://localhost:8080/
-GET http://localhost:8080/api/health
-```
-
-## Zone Endpoints
-
-| Method | Route                                        | Description                    |
-| ------ | -------------------------------------------- | ------------------------------ |
-| GET    | `/api/zones`                                 | Get all zones                  |
-| GET    | `/api/zones/{id}`                            | Get a single zone by `zone_id` |
-| GET    | `/api/zones/province/{provinceName}`         | Get zones by province name     |
-| GET    | `/api/zones/municipality/{municipalityName}` | Get zones by municipality name |
-
-### Example Requests
-
-```text
-GET http://localhost:8080/api/zones
-GET http://localhost:8080/api/zones/59500024
-GET http://localhost:8080/api/zones/province/KwaZulu-Natal
-GET http://localhost:8080/api/zones/municipality/Ethekwini%20Metropolitan%20Municipality
-```
-
-## Malaria Observation Endpoints
-
-| Method | Route                                                         | Description                                                     |
-| ------ | ------------------------------------------------------------- | --------------------------------------------------------------- |
-| GET    | `/api/malaria-observations`                                   | Get all malaria environmental observations                      |
-| GET    | `/api/malaria-observations/{id}`                              | Get one malaria observation by `env_record_id`                  |
-| GET    | `/api/malaria-observations/zone/{zoneId}`                     | Get malaria observations for a specific zone                    |
-| GET    | `/api/malaria-observations/date/{dateRecorded}`               | Get malaria observations for a specific date                    |
-| GET    | `/api/malaria-observations/zone/{zoneId}/date/{dateRecorded}` | Get malaria observations for a specific zone on a specific date |
-
-### Example Requests
-
-```text
-GET http://localhost:8080/api/malaria-observations
-GET http://localhost:8080/api/malaria-observations/8054
-GET http://localhost:8080/api/malaria-observations/zone/41603005
-GET http://localhost:8080/api/malaria-observations/date/2026-03-01
-GET http://localhost:8080/api/malaria-observations/zone/41603005/date/2026-03-01
-```
-
-## Response Format
-
-Most API responses follow this structure:
-
-```json
-{
-  "success": true,
-  "data": {},
-  "message": null
-}
-```
-
-For list endpoints, `data` will be an array:
-
-```json
-{
-  "success": true,
-  "data": [],
-  "message": null
-}
-```
-
-## Example Zone Response
+## Response format
 
 ```json
 {
   "success": true,
   "data": {
-    "zoneId": 59500024,
-    "parentZoneId": null,
-    "zoneName": "ETH_24",
-    "boundaryPolygon": null,
-    "basePopulation": 12,
-    "dominantHabitatCode": "10.0",
-    "externalZoneId": "59500024",
-    "zoneType": null,
-    "latitude": -29.85264,
-    "longitude": 30.924128,
-    "populationDensityPerKm2": 1279.1251,
-    "municipalityName": "Ethekwini Metropolitan Municipality",
-    "provinceName": "KwaZulu-Natal"
+    "items": [],
+    "total": 0,
+    "limit": 100,
+    "offset": 0
   },
   "message": null
 }
 ```
 
-## Example Malaria Observation Response
+The data layer uses JDBC rather than JPA entities. This is intentional: the normalized environmental schema contains flexible PostgreSQL columns and metadata, and the API should return the database's actual current row shape rather than maintaining duplicated Java entity definitions for every schema field.
 
-```json
-{
-  "success": true,
-  "data": {
-    "envRecordId": 8054,
-    "zoneId": 41603005,
-    "dateRecorded": "2026-03-01",
-    "lstSurfaceTempC": 21.83502,
-    "soilMoisturePct": 0.3396694,
-    "ndviVegetationIndex": 0.5959259,
-    "ndwiWaterIndex": -0.38863385,
-    "airTempC": 17.569027,
-    "agricPercentage": 0.021417777
-  },
-  "message": null
-}
+## First connectivity test
+
+After setting the environment variables and starting the backend:
+
+```powershell
+Invoke-RestMethod http://localhost:8080/api/health/database
 ```
 
-## Notes
+Then verify existing seed data:
 
-* This backend is currently read-only for the main data endpoints.
-* Database credentials must be stored using environment variables.
-* The API uses existing PostgreSQL tables and does not create or update the database schema automatically.
-* The frontend should call the Spring Boot API, not the AWS RDS database directly.
+```powershell
+Invoke-RestMethod http://localhost:8080/api/data-sources
+```
+
+Finally inspect the database columns visible to the backend:
+
+```powershell
+Invoke-RestMethod http://localhost:8080/api/schema
+```

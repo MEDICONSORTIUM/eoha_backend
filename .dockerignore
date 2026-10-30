@@ -1,0 +1,9 @@
+# Only application build inputs enter the Docker build context.
+**
+!Dockerfile
+!pom.xml
+!mvnw
+!.mvn/
+!.mvn/**
+!src/
+!src/**

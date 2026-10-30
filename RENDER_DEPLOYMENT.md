@@ -51,9 +51,30 @@ The database check must return HTTP 200 and `ready=true`. HTTP 503 means databas
 
 Render's `/api/health` check measures liveness so a database outage does not repeatedly restart the JVM. A successful Render deploy alone does not confirm database access; run the database check yourself.
 
-## 5. Connect the frontend
+## 5. Connect the frontend and verify malaria inputs
 
-Set the frontend API base URL to `https://YOUR-SERVICE.onrender.com`, then rebuild/redeploy it. This backend currently has no explicit CORS policy or authentication. For a browser frontend on another origin, configure CORS to allow that frontend origin or use a same-origin proxy. Confirm that the read endpoints and schema metadata are intended to be public before routing production traffic here.
+The prototype defaults to this Render service through its JavaScript/Node.js proxy.
+Run `npm start` in `eoha-prototype` for hosted mode, or `npm run start:local`
+for an optional local backend. Browser code keeps relative `/api` URLs; the proxy
+selects the upstream. For another service hostname, configure the prototype's
+`config/api.json` or use `node tools/serve.cjs --backend https://YOUR-SERVICE.onrender.com`.
+
+In addition to health and raw resources, the frontend needs the joined endpoint:
+
+```powershell
+Invoke-RestMethod https://YOUR-SERVICE.onrender.com/api/malaria-risk-inputs
+```
+
+Expected: HTTP 200, `success=true`, and `data` containing an array of ward-month
+measurements. This is not the paginated `data.items` shape of raw-table endpoints.
+If it returns 404, confirm Render's configured deployment branch contains
+`MalariaRiskInputController.java` and `MalariaRiskInputService.java`, then rebuild
+and deploy the latest commit. A health check alone cannot detect a missing route.
+The service reads existing tables; no schema migration or data extraction is needed.
+
+This backend has no explicit CORS policy or authentication. Browser-direct requests
+from another origin require backend CORS configuration. The prototype's same-origin
+Node.js proxy works without those cross-origin browser permissions.
 
 ## Troubleshooting
 
